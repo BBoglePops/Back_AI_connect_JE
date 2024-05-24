@@ -29,7 +29,7 @@ class GazeTrackingSession:
         if not self.running:
             return
         print(self.section, ":", self.Section(self.section))
-        self.thread = threading.Timer(0.1, self.Thread_run)  # 0.1초 단위 기록
+        self.thread = threading.Timer(0.2, self.Thread_run)  # 0.1초 단위 기록
         self.thread.daemon = True
         self.thread.start()
 
@@ -135,8 +135,8 @@ class GazeTrackingSession:
         if self.thread is not None:
             self.thread.cancel()
 
-        csv_filename = "C:/KJE/IME_graduation_AI/Back_AI_connect-main/Eyetrack/0518/gaze_sections.csv"
-        
+        csv_filename = "C:/KJE/IME_graduation/Back_AI_connect-main/Eyetrack/0518/gaze_sections.csv"
+
         # CSV 파일 헤더
         csv_header = ["Section", "Count"]
 
