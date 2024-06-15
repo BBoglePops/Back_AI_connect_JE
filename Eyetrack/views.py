@@ -8,12 +8,27 @@ import base64
 import io
 from PIL import Image
 import numpy as np
+import os
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from rest_framework import status
+from django.conf import settings
 
+permission_classes = [IsAuthenticated]
 # 전역 변수 선언
-gaze_session = GazeTrackingSession()
+gaze_sessions = {}
 
-def start_gaze_tracking_view(request):
-    gaze_session.start_eye_tracking()  # 시선 추적 시작
+def start_gaze_tracking_view(request, user_id, interview_id, question_id):
+    # user_id와 interview_id를 키로 사용하여 세션 관리
+    key = f"{user_id}_{interview_id}_{question_id}"
+    if key not in gaze_sessions:
+        gaze_sessions[key] = GazeTrackingSession()
+    
+    gaze_session = gaze_sessions[key]
+    #video_path = gaze_session.video_path
+    gaze_session.start_eye_tracking()
     return JsonResponse({"message": "Gaze tracking started"}, status=200)
 
 def apply_gradient(center, radius, color, image, text=None):
@@ -22,9 +37,9 @@ def apply_gradient(center, radius, color, image, text=None):
     cv2.addWeighted(overlay, 0.5, image, 0.5, 0, image)
     if text is not None:
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1
+        font_scale = 30
         font_color = (255, 255, 255)
-        thickness = 2
+        thickness = 10
         text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
         text_x = center[0] - text_size[0] // 2
         text_y = center[1] + text_size[1] // 2
@@ -72,15 +87,19 @@ def draw_heatmap(image, section_counts):
                 center = section_centers[section]
                 color = color_map[section]
                 number = number_map[section]
-                radius = 100  # 모든 원의 반지름을 일정하게 설정
+                radius = 700  # 모든 원의 반지름을 일정하게 설정
                 apply_gradient(center, radius, color, image, number)
 
-def stop_gaze_tracking_view(request):
-    csv_filename = gaze_session.stop_eye_tracking()  # 섹션 및 횟수를 저장하고 시선 추적 종료
+def stop_gaze_tracking_view(request, user_id, interview_id, question_id):
+    key = f"{user_id}_{interview_id}_{question_id}"
+    if key not in gaze_sessions:
+        return JsonResponse({"message": "Session not found"}, status=404)
+
+    csv_filename = gaze_sessions[key].stop_eye_tracking()  # 섹션 및 횟수를 저장하고 시선 추적 종료
     section_data = pd.read_csv(csv_filename)
     section_counts = dict(zip(section_data["Section"], section_data["Count"]))
 
-    image_path = "C:/KJE/IME_graduation/Back_AI_connect-main/Eyetrack/0518/image.png"
+    image_path = "C:/KJE/IME_graduation/Back_AI_connect_JE/Eyetrack/0518/image.png"
     original_image = cv2.imread(image_path)  # 이미지 로드
 
     if original_image is None:
@@ -103,9 +122,18 @@ def stop_gaze_tracking_view(request):
 
     # GazeTrackingResult 모델에 이미지 데이터 저장
     gaze_tracking_result = GazeTrackingResult.objects.create(
+        user_id=user_id,
+        interview_id=interview_id,
         encoded_image=encoded_image_string,
         feedback=feedback  # 피드백 저장
     )
+    
+    # 업로드된 비디오 파일 삭제
+    #video_path = gaze_sessions[key].video_path
+    #if os.path.exists(video_path):
+    #    os.remove(video_path)
+
+    #del gaze_sessions[key]
 
     return JsonResponse({
         "message": "Gaze tracking stopped",

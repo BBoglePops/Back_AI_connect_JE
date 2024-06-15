@@ -135,7 +135,7 @@ class GazeTrackingSession:
         if self.thread is not None:
             self.thread.cancel()
 
-        csv_filename = "C:/KJE/IME_graduation/Back_AI_connect-main/Eyetrack/0518/gaze_sections.csv"
+        csv_filename = "C:/KJE/IME_graduation/Back_AI_connect_JE/Eyetrack/0518/gaze_sections.csv"
 
         # CSV 파일 헤더
         csv_header = ["Section", "Count"]
